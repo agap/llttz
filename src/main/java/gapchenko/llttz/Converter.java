@@ -4,78 +4,57 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import gapchenko.llttz.stores.*;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.TimeZone;
-
-import static java.lang.Math.*;
 
 /**
  * @author artemgapchenko
  * Created on 18.04.14.
  */
 public class Converter implements IConverter {
-    private JsonArray array;
+    private TimeZoneStore tzStore;
     private static Converter instance = null;
 
-    private Converter() {
-        loadData();
+    private Converter(Class clazz) {
+        if (!TimeZoneStore.class.isAssignableFrom(clazz)) {
+            throw new IllegalArgumentException("Illegal store provided: " + clazz.getName());
+        }
+        try {
+            tzStore = (TimeZoneStore) clazz.newInstance();
+            loadData();
+        } catch (InstantiationException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
     }
 
-    public static Converter getInstance() {
-        if (instance == null) instance = new Converter();
+    public static Converter getInstance(final Class clazz) {
+        if (instance == null || !instance.getStoreClass().equals(clazz)) instance = new Converter(clazz);
         return instance;
+    }
+
+    public Class getStoreClass() {
+        return tzStore.getClass();
     }
 
     @Override
     public TimeZone getTimeZone(final double lat, final double lon) {
-        double bestDistance = Double.MAX_VALUE;
-        JsonObject bestTZ = null;
-
-        for (JsonElement object : array) {
-            JsonObject current = object.getAsJsonObject();
-
-            double tzLat = current.get("latitude").getAsDouble(), tzLon = current.get("longitude").getAsDouble();
-            double newDistance = distance(lat, lon, tzLat, tzLon);
-
-            if (newDistance < bestDistance) {
-                bestDistance = newDistance;
-                bestTZ = current;
-            }
-        }
-
-        return bestTZ != null
-                ? TimeZone.getTimeZone(bestTZ.get("zone").getAsString())
-                : null;
+        return tzStore.nearestTimeZone(new Location(new double[]{lat, lon}));
     }
 
     private void loadData() {
         BufferedReader br = new BufferedReader(
                 new InputStreamReader(Converter.class.getResourceAsStream("/timezones.json"))
         );
-        array = new JsonParser().parse(br).getAsJsonArray();
-    }
+        JsonArray array = new JsonParser().parse(br).getAsJsonArray();
 
-    /**
-     * Calculates distance between two points.
-     * @see <a href="http://en.wikipedia.org/wiki/Great-circle_distance">Great-circle distance</a>
-     * @param latFrom latitude of from point
-     * @param lonFrom longitude of from point
-     * @param latTo latitude of to point
-     * @param lonTo longitude of to point
-     * @return calculated distance
-     */
-    private double distance(final double latFrom, final double lonFrom, final double latTo, final double lonTo) {
-        final double meridianLength = 111.1;
-
-        final double latFromRad = toRadians(latFrom),
-                     lonFromRad = toRadians(lonFrom),
-                     latToRad   = toRadians(latTo),
-                     lonToRad   = toRadians(lonTo);
-
-        final double centralAngle = toDegrees(acos(sin(latFromRad) * sin(latToRad) + cos(latFromRad) * cos(latToRad) * cos(lonToRad - lonFromRad)));
-
-        return meridianLength * (centralAngle <= 180.0 ? centralAngle : (360.0 - centralAngle));
+        for (JsonElement element : array) {
+            JsonObject obj = element.getAsJsonObject();
+            tzStore.insert(new Location(
+                    obj.get("latitude").getAsDouble(), obj.get("longitude").getAsDouble(), obj.get("zone").getAsString()
+            ));
+        }
     }
 }
