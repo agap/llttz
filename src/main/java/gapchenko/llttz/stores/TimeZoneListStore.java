@@ -12,8 +12,8 @@ public class TimeZoneListStore extends TimeZoneStore {
     private List<Location> timeZones = new LinkedList<>();
 
     @Override
-    public void insert(Location node) {
-        timeZones.add(node);
+    public void insert(Location loc) {
+        timeZones.add(loc);
     }
 
     @Override
@@ -22,7 +22,7 @@ public class TimeZoneListStore extends TimeZoneStore {
         Location bestGuess = timeZones.get(0);
 
         for (Location current : timeZones.subList(1, timeZones.size())) {
-            double newDistance = distance(node.getLatitude(), node.getLongitude(), current.getLatitude(), current.getLongitude());
+            double newDistance = distanceInKilometers(node, current);
 
             if (newDistance < bestDistance) {
                 bestDistance = newDistance;
@@ -30,8 +30,6 @@ public class TimeZoneListStore extends TimeZoneStore {
             }
         }
 
-        return bestGuess != null
-                ? java.util.TimeZone.getTimeZone(bestGuess.getZone())
-                : null;
+        return java.util.TimeZone.getTimeZone(bestGuess.getZone());
     }
 }

@@ -12,7 +12,7 @@ import static java.lang.Math.sin;
  */
 public abstract class TimeZoneStore {
 
-    abstract public void insert(final Location node);
+    abstract public void insert(final Location loc);
 
     abstract public TimeZone nearestTimeZone(final Location node);
 
@@ -25,9 +25,16 @@ public abstract class TimeZoneStore {
      * @param lonTo longitude of to point
      * @return calculated distance
      */
-    protected double distance(final double latFrom, final double lonFrom, final double latTo, final double lonTo) {
+    protected double distanceInKilometers(final double latFrom, final double lonFrom, final double latTo, final double lonTo) {
         final double meridianLength = 111.1;
+        return meridianLength * centralAngle(latFrom, lonFrom, latTo, lonTo);
+    }
 
+    protected double centralAngle(final Location from, final Location to) {
+        return centralAngle(from.getLatitude(), from.getLongitude(), to.getLatitude(), to.getLongitude());
+    }
+
+    protected double centralAngle(final double latFrom, final double lonFrom, final double latTo, final double lonTo) {
         final double latFromRad = toRadians(latFrom),
                 lonFromRad = toRadians(lonFrom),
                 latToRad   = toRadians(latTo),
@@ -35,6 +42,10 @@ public abstract class TimeZoneStore {
 
         final double centralAngle = toDegrees(acos(sin(latFromRad) * sin(latToRad) + cos(latFromRad) * cos(latToRad) * cos(lonToRad - lonFromRad)));
 
-        return meridianLength * (centralAngle <= 180.0 ? centralAngle : (360.0 - centralAngle));
+        return centralAngle <= 180.0 ? centralAngle : (360.0 - centralAngle);
+    }
+
+    protected double distanceInKilometers(final Location from, final Location to) {
+        return distanceInKilometers(from.getLatitude(), from.getLongitude(), to.getLatitude(), to.getLongitude());
     }
 }
