@@ -1,12 +1,9 @@
 package gapchenko.llttz;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import gapchenko.llttz.stores.*;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.TimeZone;
 
@@ -46,15 +43,19 @@ public class Converter implements IConverter {
 
     private void loadData() {
         BufferedReader br = new BufferedReader(
-                new InputStreamReader(Converter.class.getResourceAsStream("/timezones.json"))
+                new InputStreamReader(Converter.class.getResourceAsStream("/timezones.csv"))
         );
-        JsonArray array = new JsonParser().parse(br).getAsJsonArray();
 
-        for (JsonElement element : array) {
-            JsonObject obj = element.getAsJsonObject();
-            tzStore.insert(new Location(
-                    obj.get("latitude").getAsDouble(), obj.get("longitude").getAsDouble(), obj.get("zone").getAsString()
-            ));
+        try {
+            String line;
+            String[] location;
+
+            while ((line = br.readLine()) != null) {
+                location = line.split(";");
+                tzStore.insert(new Location(Double.valueOf(location[1]), Double.valueOf(location[2]), location[0]));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
